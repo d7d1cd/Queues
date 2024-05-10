@@ -9,17 +9,17 @@
 struct Timer
 {
     std::chrono::high_resolution_clock::time_point _start, _finish;
-
-    void start()      { _start = std::chrono::high_resolution_clock::now(); }
-    void stop()       { _finish = std::chrono::high_resolution_clock::now(); }
-    auto elapsed_ms() { return std::chrono::duration_cast<std::chrono::microseconds>(_finish - _start).count(); }
+ 
+    void start()       { _start = std::chrono::high_resolution_clock::now(); }
+    void stop()        { _finish = std::chrono::high_resolution_clock::now(); }
+    auto elapsed_mcs() { return std::chrono::duration_cast<std::chrono::microseconds>(_finish - _start).count(); }
 };
 
 
-template <typename TQueue, typename TValue>
+template <template <typename> typename TQueue, typename TValue>
 auto test(auto capacity, auto objects_count, auto produce_time, auto consume_time)
 {
-    TQueue queue(capacity);
+    TQueue<TValue> queue(capacity);
 
     std::vector<TValue> src(objects_count), dst(objects_count);
     std::ranges::for_each(src, [](auto & v){ v = rand(); });
@@ -29,13 +29,15 @@ auto test(auto capacity, auto objects_count, auto produce_time, auto consume_tim
 
     std::thread producer([&src, &queue, produce_time]
     {
+        auto time = std::chrono::system_clock::now();
         size_t index = 0;
         while (index != src.size())
         {
             if (queue.try_push(src[index]))
             {
                 ++index;
-                std::this_thread::sleep_for(std::chrono::microseconds(produce_time));
+                time += std::chrono::microseconds(produce_time);
+                std::this_thread::sleep_until(time);
             }
             else
             {
@@ -46,13 +48,15 @@ auto test(auto capacity, auto objects_count, auto produce_time, auto consume_tim
 
     std::thread consumer([&dst, &queue, consume_time]
     {
+        auto time = std::chrono::system_clock::now();
         size_t index = 0;
         while (index != dst.size())
         {
             if (queue.try_pop(dst[index]))
             {
                 ++index;
-                std::this_thread::sleep_for(std::chrono::microseconds(consume_time));
+                time += std::chrono::microseconds(consume_time);
+                std::this_thread::sleep_until(time);
             }
             else
             {
@@ -70,7 +74,7 @@ auto test(auto capacity, auto objects_count, auto produce_time, auto consume_tim
         std::cout << "Content is not equal!" << std::endl;
     }
 
-    return timer.elapsed_ms();
+    return timer.elapsed_mcs();
 }
 
 
@@ -87,13 +91,13 @@ int main(int argc, char* argv[])
               << std::endl;
 
     constexpr size_t REPEATS = 51;
-    size_t repeats = REPEATS;
+    auto repeats = REPEATS;
     size_t lfq_signed = 0, lfq_unsigned = 0, lfq_blind = 0;
     while (repeats--)
     {
-        lfq_signed   += test<LockFreeQueue<uint64_t>, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
-        lfq_unsigned += test<LockFreeQueueUnsignedIndex<uint64_t>, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
-        lfq_blind    += test<LockFreeQueueBlind<uint64_t>, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
+        lfq_signed   += test<LockFreeQueue, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
+        lfq_unsigned += test<LockFreeQueueUnsignedIndex, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
+        lfq_blind    += test<LockFreeQueueBlind, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
 
         if (repeats == REPEATS - 1)
         {
@@ -107,3 +111,33 @@ int main(int argc, char* argv[])
     std::cout << "LockFreeQueue unsigned index type measures: " << lfq_unsigned / (REPEATS - 1) << " mcs" << std::endl;
     std::cout << "LockFreeQueue blind measures: " << lfq_blind / (REPEATS - 1) << " mcs" << std::endl << std::endl;
 }
+
+
+// int main()
+// {
+//     Timer timer;
+//     timer.start();
+
+//     for (int i = 0; i < 5'000; ++i)
+//     {
+//         // auto now = std::chrono::high_resolution_clock::now();
+//         // std::this_thread::sleep_until(now + std::chrono::milliseconds(1));
+//         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+//     }
+
+//     timer.stop();
+//     std::cout << "elapsed, mcs: " << timer.elapsed_mcs() << std::endl;
+// }
+
+
+// using namespace std::chrono_literals;
+
+// int main() 
+// {
+//     auto time = std::chrono::system_clock::now();
+//     for (auto _ = 0; _ != 1'000'000; ++_)
+//     {
+//         time += 1us;
+//         std::this_thread::sleep_until(time);
+//     }
+// }
