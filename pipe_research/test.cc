@@ -2,7 +2,6 @@
 #include <iostream>
 #include <thread>
 #include <vector>
-#include "common/transport/pipe_transport.h"
 #include "bounded_queue.h"
 
 
