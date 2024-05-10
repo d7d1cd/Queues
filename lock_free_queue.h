@@ -8,7 +8,8 @@ template <typename T>
 class LockFreeQueue
 {
 public:
-    using StorageType = std::vector<T>;
+    using ValueType   = T;
+    using StorageType = std::vector<ValueType>;
     using IndexType   = int64_t;
 
     LockFreeQueue(IndexType capacity) : _mask(capacity - 1)
@@ -198,4 +199,35 @@ private:
     alignas(64) const IndexType        _mask;
     alignas(64) std::atomic<IndexType> _writer;
     alignas(64) std::atomic<IndexType> _reader;
+};
+
+
+
+class PointerQueue : public LockFreeQueue<void *>
+{
+    using Base = LockFreeQueue<void *>;
+
+public:
+    using Base::Base;
+
+    template <typename P>
+    requires(std::is_pointer_v<P>)
+    bool try_push(P pointer)
+    {
+        return Base::try_push(pointer);
+    }
+
+    template <typename P>
+    requires(std::is_pointer_v<P>)
+    bool try_pop(P & pointer)
+    {
+        Base::ValueType p;
+        if (Base::try_pop(p)) [[likely]]
+        {
+            pointer = static_cast<P>(p);
+            return true;
+        }
+
+        return false;
+    }
 };

@@ -5,3 +5,4 @@ project(queues)
 set(CMAKE_CXX_STANDARD 20)
 
 add_executable(benchmark benchmark.cc)
+add_executable(test test.cc)
