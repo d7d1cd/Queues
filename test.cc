@@ -2,7 +2,8 @@
 #include <iostream>
 #include <thread>
 #include <vector>
-#include "bounded_queue.h"
+#include <algorithm>
+#include "lock_free_queue.h"
 
 
 struct Timer
@@ -15,23 +16,23 @@ struct Timer
 };
 
 
-template <typename TTransport>
-auto test(auto transport_capacity, auto objects_count, auto produce_time, auto consume_time)
+template <typename TQueue, typename TValue>
+auto test(auto capacity, auto objects_count, auto produce_time, auto consume_time)
 {
-    TTransport transport(transport_capacity);
+    TQueue queue(capacity);
 
-    std::vector<size_t> src(objects_count), dst(objects_count);
-    std::for_each(src.begin(), src.end(), [](auto & v){ v = rand(); });
+    std::vector<TValue> src(objects_count), dst(objects_count);
+    std::ranges::for_each(src, [](auto & v){ v = rand(); });
 
     Timer timer;
     timer.start();
 
-    std::thread producer([&src, &transport, produce_time]
+    std::thread producer([&src, &queue, produce_time]
     {
         size_t index = 0;
         while (index != src.size())
         {
-            if (transport.write_val(src[index]))
+            if (queue.try_push(src[index]))
             {
                 ++index;
                 std::this_thread::sleep_for(std::chrono::microseconds(produce_time));
@@ -43,12 +44,12 @@ auto test(auto transport_capacity, auto objects_count, auto produce_time, auto c
         }
     });
 
-    std::thread consumer([&dst, &transport, consume_time]
+    std::thread consumer([&dst, &queue, consume_time]
     {
         size_t index = 0;
         while (index != dst.size())
         {
-            if (transport.read_val(dst[index]))
+            if (queue.try_pop(dst[index]))
             {
                 ++index;
                 std::this_thread::sleep_for(std::chrono::microseconds(consume_time));
@@ -64,7 +65,7 @@ auto test(auto transport_capacity, auto objects_count, auto produce_time, auto c
     consumer.join();
     timer.stop();
 
-    if (!std::equal(src.begin(), src.end(), dst.begin()))
+    if (!std::ranges::equal(src, dst))
     {
         std::cout << "Content is not equal!" << std::endl;
     }
@@ -75,11 +76,11 @@ auto test(auto transport_capacity, auto objects_count, auto produce_time, auto c
 
 int main(int argc, char* argv[])
 {
-    size_t transport_capacity = std::atoll(argv[1]);
+    size_t queue_capacity = std::atoll(argv[1]);
     size_t objects_count = std::atoll(argv[2]);
     size_t produce_time = std::atoll(argv[3]);
     size_t consume_time = std::atoll(argv[4]);
-    std::cout << "transport_capacity: " << transport_capacity
+    std::cout << "queue_capacity: " << queue_capacity
               << ", objects_count: " << objects_count
               << ", produce_time, mcs: " << produce_time
               << ", consume_time, mcs: " << consume_time
@@ -87,19 +88,22 @@ int main(int argc, char* argv[])
 
     constexpr size_t REPEATS = 51;
     size_t repeats = REPEATS;
-    size_t pipe = 0, bqueue = 0;
+    size_t lfq_signed = 0, lfq_unsigned = 0, lfq_blind = 0;
     while (repeats--)
     {
-        pipe   += test<common::PipeTransport>(transport_capacity * sizeof(size_t) + 1, objects_count, produce_time, consume_time);
-        bqueue += test<BoundedQueue<size_t>>(transport_capacity, objects_count, produce_time, consume_time);
+        lfq_signed   += test<LockFreeQueue<uint64_t>, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
+        lfq_unsigned += test<LockFreeQueueUnsignedIndex<uint64_t>, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
+        lfq_blind    += test<LockFreeQueueBlind<uint64_t>, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
 
         if (repeats == REPEATS - 1)
         {
-            pipe = 0;
-            bqueue = 0;
+            lfq_signed = 0;
+            lfq_unsigned = 0;
+            lfq_blind = 0;
         }
     }
 
-    std::cout << "PipeTransport measures: " << pipe / (REPEATS - 1) << " mcs" << std::endl;
-    std::cout << "BoundedQueue measures: " << bqueue / (REPEATS - 1) << " mcs" << std::endl << std::endl;
+    std::cout << "LockFreeQueue signed index type measures: " << lfq_signed / (REPEATS - 1) << " mcs" << std::endl;
+    std::cout << "LockFreeQueue unsigned index type measures: " << lfq_unsigned / (REPEATS - 1) << " mcs" << std::endl;
+    std::cout << "LockFreeQueue blind measures: " << lfq_blind / (REPEATS - 1) << " mcs" << std::endl << std::endl;
 }
