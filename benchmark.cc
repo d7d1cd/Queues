@@ -111,33 +111,3 @@ int main(int argc, char* argv[])
     std::cout << "LockFreeQueue unsigned index type measures: " << lfq_unsigned / (REPEATS - 1) << " mcs" << std::endl;
     std::cout << "LockFreeQueue blind measures: " << lfq_blind / (REPEATS - 1) << " mcs" << std::endl << std::endl;
 }
-
-
-// int main()
-// {
-//     Timer timer;
-//     timer.start();
-
-//     for (int i = 0; i < 5'000; ++i)
-//     {
-//         // auto now = std::chrono::high_resolution_clock::now();
-//         // std::this_thread::sleep_until(now + std::chrono::milliseconds(1));
-//         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-//     }
-
-//     timer.stop();
-//     std::cout << "elapsed, mcs: " << timer.elapsed_mcs() << std::endl;
-// }
-
-
-// using namespace std::chrono_literals;
-
-// int main() 
-// {
-//     auto time = std::chrono::system_clock::now();
-//     for (auto _ = 0; _ != 1'000'000; ++_)
-//     {
-//         time += 1us;
-//         std::this_thread::sleep_until(time);
-//     }
-// }
