@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include "lock_free_queue.h"
+#include "gcl_queue.h"
 
 
 struct Timer
@@ -92,22 +93,25 @@ int main(int argc, char* argv[])
 
     constexpr size_t REPEATS = 51;
     auto repeats = REPEATS;
-    size_t lfq_signed = 0, lfq_unsigned = 0, lfq_blind = 0;
+    size_t lfq_signed = 0, gcl = 0, lfq_unsigned = 0, lfq_blind = 0;
     while (repeats--)
     {
-        lfq_signed   += test<LockFreeQueue, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
+        // lfq_signed   += test<LockFreeQueue, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
         lfq_unsigned += test<LockFreeQueueUnsignedIndex, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
-        lfq_blind    += test<LockFreeQueueBlind, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
+        gcl          += test<GclQueue, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
+        // lfq_blind    += test<LockFreeQueueBlind, uint64_t>(queue_capacity, objects_count, produce_time, consume_time);
 
         if (repeats == REPEATS - 1)
         {
             lfq_signed = 0;
             lfq_unsigned = 0;
+            gcl = 0;
             lfq_blind = 0;
         }
     }
 
-    std::cout << "LockFreeQueue signed index type measures: " << lfq_signed / (REPEATS - 1) << " mcs" << std::endl;
+    // std::cout << "LockFreeQueue signed index type measures: " << lfq_signed / (REPEATS - 1) << " mcs" << std::endl;
     std::cout << "LockFreeQueue unsigned index type measures: " << lfq_unsigned / (REPEATS - 1) << " mcs" << std::endl;
-    std::cout << "LockFreeQueue blind measures: " << lfq_blind / (REPEATS - 1) << " mcs" << std::endl << std::endl;
+    std::cout << "GclQueue measures: " << gcl / (REPEATS - 1) << " mcs" << std::endl;
+    // std::cout << "LockFreeQueue blind measures: " << lfq_blind / (REPEATS - 1) << " mcs" << std::endl << std::endl;
 }

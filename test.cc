@@ -1,23 +1,20 @@
 #include <iostream>
 #include <cassert>
-#include "lock_free_queue.h"
+#include "gcl/include/lock_free_buffer_queue.h"
 
 
 int main()
 {
-    PointerQueue queue(2);
+    gcl::lock_free_buffer_queue<int> queue(1);
 
-    int i = 42;
-    assert(queue.try_push(&i));
+    auto r = queue.nonblocking_push(42);
+    std::cout << static_cast<int>(r) << std::endl;
 
-    double d = 42.42;
-    assert(queue.try_push(&d));
+    r = queue.nonblocking_push(84);
+    std::cout << static_cast<int>(r) << std::endl;
 
-    int * ip = nullptr;
-    assert(queue.try_pop(ip));
-    assert(*ip == i);
-
-    double * dp = nullptr;
-    assert(queue.try_pop(dp));
-    assert(*dp == d);
+    int v = 0;
+    r = queue.nonblocking_pop(v);
+    std::cout << static_cast<int>(r) << std::endl;
+    std::cout << v << std::endl;
 }
